@@ -100,7 +100,8 @@ class Decoder(nn.Module):
         x = self.relu1(self.upconv1(x))
         x = self.relu2(self.upconv2(x))
         x = self.relu3(self.upconv3(x))
-        x = self.upconv4(x)
+        x = self.relu4(self.upconv4(x))  # 48x48 -> 96x96
+        x = self.upconv5(x)             # 96x96 -> 192x192
         x = F.interpolate(x, size=(227, 227), mode='bilinear', align_corners=False)
 
         return x
