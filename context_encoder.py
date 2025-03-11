@@ -28,10 +28,11 @@ class ChannelWiseFC(nn.Module):
         # x shape: (B, C, H, W)
         B, C, H, W = x.size()
         x_flat = x.view(B, C, -1)  # shape: (B, C, H*W)
-        # For each channel, perform a linear transformation (batch multiplication)
-        out = torch.bmm(x_flat, self.fc) + self.bias.unsqueeze(0)  # (B, C, H*W)
+        # Using einsum to perform channel-wise multiplication:
+        out = torch.einsum('bci,cij->bcj', x_flat, self.fc) + self.bias.unsqueeze(0)
         out = out.view(B, C, H, W)
         return out
+
 
 #########################################
 # Encoder: Inspired by AlexNet’s conv layers
