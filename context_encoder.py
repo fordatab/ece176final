@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+# This is an imlementation of https://arxiv.org/abs/1604.07379: Context Encoders: Feature Learning by Inpainting
+ 
+
 
 #########################################
 # Channel-wise Fully Connected Module
@@ -97,7 +100,7 @@ class Decoder(nn.Module):
         x = self.relu1(self.upconv1(x))
         x = self.relu2(self.upconv2(x))
         x = self.relu3(self.upconv3(x))
-        x = torch.tanh(self.upconv4(x))
+        x = self.upconv4(x)
         x = F.interpolate(x, size=(227, 227), mode='bilinear', align_corners=False)
 
         return x
