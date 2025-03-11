@@ -42,7 +42,7 @@ class Encoder(nn.Module):
         # A simplified version of AlexNet's first layers
         self.conv1 = nn.Conv2d(3, 64, kernel_size=11, stride=4, padding=2)
         self.relu1 = nn.ReLU(inplace=True)
-        self.bn1 = nn.BatchNormalization2d()
+        self.bn1 = nn.BatchNorm2d()
         self.pool1 = nn.MaxPool2d(kernel_size=3, stride=2)
         
         self.conv2 = nn.Conv2d(64, 192, kernel_size=5, padding=2)
