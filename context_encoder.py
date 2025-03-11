@@ -61,8 +61,8 @@ class Encoder(nn.Module):
         self.pool5 = nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True)
         
     def forward(self, x):
-        x = self.pool1(self.relu1(self.conv1(x)))  # (B, 64, ~55, ~55)
-        x = self.pool2(self.relu2(self.conv2(x)))  # (B, 192, ~27, ~27)
+        x = self.pool1(self.bn1(self.relu1(self.conv1(x))))  # (B, 64, ~55, ~55)
+        x = self.pool2(self.bn2(self.relu2(self.conv2(x))))  # (B, 192, ~27, ~27)
         x = self.relu3(self.conv3(x))              # (B, 384, ~27, ~27)
         x = self.relu4(self.conv4(x))              # (B, 256, ~27, ~27)
         x = self.pool5(self.relu5(self.conv5(x)))    # Expected to be (B, 256, 6, 6) for 227x227 input
