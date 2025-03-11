@@ -89,7 +89,7 @@ class Decoder(nn.Module):
         self.relu3   = nn.ReLU(inplace=True)
         
         # Final up-conv to generate a 3-channel output (using tanh to bound outputs)
-        self.upconv4 = nn.ConvTranspose2d(32, 3, kernel_size=4, stride=2, padding=1)     # 48x48 -> 96x96
+        self.upconv4 = nn.ConvTranspose2d(32, 16, kernel_size=4, stride=2, padding=1)     # 48x48 -> 96x96
         self.relu4   = nn.ReLU(inplace=True)
         
         # (For higher resolution, more layers or interpolation may be applied)
