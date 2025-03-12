@@ -103,6 +103,7 @@ class Decoder(nn.Module):
         x = self.relu4(self.upconv4(x))  # 48x48 -> 96x96
         x = self.upconv5(x)             # 96x96 -> 192x192
         x = F.interpolate(x, size=(227, 227), mode='bilinear', align_corners=False)
+        x = torch.tanh(x)  # Apply tanh to bound outputs to [-1, 1]
 
         return x
 

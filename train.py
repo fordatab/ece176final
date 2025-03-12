@@ -106,13 +106,15 @@ def train_epoch(model, train_loader, criterion, optimizer, epoch, args, writer):
         
         # Compute loss
         inverse_mask = 1 - mask
-        diff = torch.abs(outputs - images)  # Element-wise absolute difference
-        # Masked loss (normalized by number of masked pixels)
-        loss_masked = (diff * inverse_mask).sum() / (inverse_mask.sum() + 1e-8)
-        # Unmasked loss (normalized by number of unmasked pixels)
-        loss_unmasked = (diff * mask).sum() / (mask.sum() + 1e-8)
-        # Total loss with weighting
-        loss = loss_masked + args.lambda_unmasked * loss_unmasked
+        loss = criterion(outputs * inverse_mask, images * inverse_mask)
+        # Optionally, compute loss on unmasked region as well
+        # diff = torch.abs(outputs - images)  # Element-wise absolute difference
+        # # Masked loss (normalized by number of masked pixels)
+        # loss_masked = (diff * inverse_mask).sum() / (inverse_mask.sum() + 1e-8)
+        # # Unmasked loss (normalized by number of unmasked pixels)
+        # loss_unmasked = (diff * mask).sum() / (mask.sum() + 1e-8)
+        # # Total loss with weighting
+        # loss = loss_masked + args.lambda_unmasked * loss_unmasked
         
         # Backward and optimize
         loss.backward()
@@ -161,10 +163,12 @@ def validate(model, val_loader, criterion, epoch, args, writer):
             
             # Compute loss on the masked region only
             inverse_mask = 1 - mask
-            diff = torch.abs(outputs - images)
-            loss_masked = (diff * inverse_mask).sum() / (inverse_mask.sum() + 1e-8)
-            loss_unmasked = (diff * mask).sum() / (mask.sum() + 1e-8)
-            loss = loss_masked + args.lambda_unmasked * loss_unmasked
+            loss = criterion(outputs * inverse_mask, images * inverse_mask)
+            # Optionally, compute loss on unmasked region as well
+            # diff = torch.abs(outputs - images)
+            # loss_masked = (diff * inverse_mask).sum() / (inverse_mask.sum() + 1e-8)
+            # loss_unmasked = (diff * mask).sum() / (mask.sum() + 1e-8)
+            # loss = loss_masked + args.lambda_unmasked * loss_unmasked
             
             running_loss += loss.item()
     
@@ -192,6 +196,9 @@ def validate(model, val_loader, criterion, epoch, args, writer):
     
     return epoch_loss
 
+def scale_to_minus_one_one(x):
+    return 2 * x - 1
+
 def main():
     args = parse_args()
     
@@ -204,19 +211,32 @@ def main():
     #CIFAR-10 Test
     normalize = transforms.Normalize(mean=[0.4914, 0.4822, 0.4465],
                                  std=[0.2023, 0.1994, 0.2010])
-
+    
     train_transform = transforms.Compose([
-        transforms.Resize((227, 227)),  # Resize CIFAR10 images to 227x227
+        transforms.Resize((227, 227)),  # Resize CIFAR-10 images to 227x227
         transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        normalize,
+        transforms.ToTensor(),          # Scales to [0, 1]
+        scale_to_minus_one_one
     ])
 
     val_transform = transforms.Compose([
         transforms.Resize((227, 227)),
-        transforms.ToTensor(),
-        normalize,
+        transforms.ToTensor(),          # Scales to [0, 1]
+        scale_to_minus_one_one
     ])
+
+    # train_transform = transforms.Compose([
+    #     transforms.Resize((227, 227)),  # Resize CIFAR10 images to 227x227
+    #     transforms.RandomHorizontalFlip(),
+    #     transforms.ToTensor(),
+    #     normalize,
+    # ])
+
+    # val_transform = transforms.Compose([
+    #     transforms.Resize((227, 227)),
+    #     transforms.ToTensor(),
+    #     normalize,
+    # ])
 
     # Use CIFAR10 instead of ImageFolder
     train_dataset = CIFAR10(root='./data', train=True, download=True, transform=train_transform)
