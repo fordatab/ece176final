@@ -41,6 +41,8 @@ def parse_args():
                         help='size of mask as a fraction of image size')
     parser.add_argument('--gpu', type=int, default=0,
                         help='GPU id to use')
+    parser.add_argument('--lambda_unmasked', type=float, default=0.0,
+                        help='weight for unmasked region loss')
     return parser.parse_args()
 
 def create_mask(batch_size, height, width, mask_type='center', mask_size=0.25):
@@ -102,9 +104,15 @@ def train_epoch(model, train_loader, criterion, optimizer, epoch, args, writer):
         optimizer.zero_grad()
         outputs = model(masked_images)
         
-        # Compute loss on the masked region only
+        # Compute loss
         inverse_mask = 1 - mask
-        loss = criterion(outputs * inverse_mask, images * inverse_mask)
+        diff = torch.abs(outputs - images)  # Element-wise absolute difference
+        # Masked loss (normalized by number of masked pixels)
+        loss_masked = (diff * inverse_mask).sum() / (inverse_mask.sum() + 1e-8)
+        # Unmasked loss (normalized by number of unmasked pixels)
+        loss_unmasked = (diff * mask).sum() / (mask.sum() + 1e-8)
+        # Total loss with weighting
+        loss = loss_masked + args.lambda_unmasked * loss_unmasked
         
         # Backward and optimize
         loss.backward()
@@ -121,7 +129,6 @@ def train_epoch(model, train_loader, criterion, optimizer, epoch, args, writer):
         
         # Log images occasionally
         if i % 200 == 0:
-            # Log original, masked, and reconstructed images
             img_grid_original = torch.cat([images[:4]], dim=0)
             img_grid_masked = torch.cat([masked_images[:4]], dim=0)
             img_grid_recon = torch.cat([outputs[:4]], dim=0)
@@ -154,7 +161,10 @@ def validate(model, val_loader, criterion, epoch, args, writer):
             
             # Compute loss on the masked region only
             inverse_mask = 1 - mask
-            loss = criterion(outputs * inverse_mask, images * inverse_mask)
+            diff = torch.abs(outputs - images)
+            loss_masked = (diff * inverse_mask).sum() / (inverse_mask.sum() + 1e-8)
+            loss_unmasked = (diff * mask).sum() / (mask.sum() + 1e-8)
+            loss = loss_masked + args.lambda_unmasked * loss_unmasked
             
             running_loss += loss.item()
     
