@@ -12,6 +12,9 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision.datasets import CIFAR10
 
 
+
+
+
 # Import the model definition
 from context_encoder import ContextEncoder
 
@@ -294,7 +297,10 @@ def main():
     model.cuda()
     
     # Define loss function and optimizer
-    criterion = nn.L1Loss()  # L1 loss tends to work better for image reconstruction
+    lambda_rec = 0.999 #default from paper
+    lambda_adv = 0.001 #default from paper
+    #criterion = lambda_rec * nn.L1Loss() + lambda_adv * nn.BCEWithLogitsLoss() # L1 loss tends to work better for image reconstruction
+    criterion = nn.L1Loss()
     optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(0.5, 0.999))
     
     # Learning rate scheduler
