@@ -208,6 +208,30 @@ class Decoder2(nn.Module):
         x = self.relu4(self.upconv4(x))
 
         return x
+    
+class ContextEncoder2(nn.Module):
+    def __init__(self, batch_size):
+        super(ContextEncoder2, self).__init__()
+
+        self.batch_size = batch_size
+
+        self.encode = Encoder2()
+        if (self.batch_size != 128):
+            self.fc = FullyConnected(self.batch_size)
+        else:
+            self.fc = FullyConnected()
+        self.decode = Decoder2()
+    
+    def forward(self, x):
+        encoded = self.encode(x)
+        connection = self.fc(encoded)
+        decoded = self.decode(connection)
+
+        return decoded
+
+
+
+
 
         
 
