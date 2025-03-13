@@ -300,7 +300,7 @@ def main():
     lambda_rec = 0.999 #default from paper
     lambda_adv = 0.001 #default from paper
     #criterion = lambda_rec * nn.L1Loss() + lambda_adv * nn.BCEWithLogitsLoss() # L1 loss tends to work better for image reconstruction
-    criterion = nn.L1Loss()
+    criterion = nn.L1Loss
     optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(0.5, 0.999))
     
     # Learning rate scheduler
