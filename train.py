@@ -16,7 +16,7 @@ from torchvision.datasets import CIFAR10
 
 
 # Import the model definition
-from context_encoder import ContextEncoder
+from context_encoder import ContextEncoder, Discriminator
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train Context Encoder on ImageNet')
@@ -86,51 +86,91 @@ def apply_mask(images, mask):
     masked_images = images * mask
     return masked_images
 
-def train_epoch(model, train_loader, criterion, optimizer, epoch, args, writer):
+def train_epoch(model, discriminator, train_loader, criterion_adv, lambda_rec, lambda_adv,
+                optimizer_g, optimizer_d, epoch, args, writer):
     model.train()
-    running_loss = 0.0
+    discriminator.train()
+    running_loss_g = 0.0
+    running_loss_d = 0.0
+
     
     pbar = tqdm(enumerate(train_loader), total=len(train_loader), 
                 desc=f"Epoch {epoch}/{args.epochs}")
     
     for i, (images, _) in pbar:
-        # Resize to 227x227 to match model input size
-        images = nn.functional.interpolate(images, size=(227, 227))
-        images = images.cuda()
-        
-        # Create masks and apply to images
-        mask = create_mask(images.size(0), images.size(2), images.size(3), 
-                           args.mask_type, args.mask_size)
+        images = nn.functional.interpolate(images, size=(227, 227)).cuda()
+        mask = create_mask(images.size(0), 227, 227, args.mask_type, args.mask_size)
         masked_images = apply_mask(images, mask)
-        
-        # Forward pass
-        optimizer.zero_grad()
-        outputs = model(masked_images)
-        
-        # Compute loss
         inverse_mask = 1 - mask
-        loss = criterion(outputs * inverse_mask, images * inverse_mask)
-        # Optionally, compute loss on unmasked region as well
-        diff = torch.abs(outputs - images)  # Element-wise absolute difference
-        # Masked loss (normalized by number of masked pixels)
-        loss_masked = (diff * inverse_mask).sum() / (inverse_mask.sum() + 1e-8)
-        # Unmasked loss (normalized by number of unmasked pixels)
-        loss_unmasked = (diff * mask).sum() / (mask.sum() + 1e-8)
-        # Total loss with weighting
-        loss = loss_masked + args.lambda_unmasked * loss_unmasked
-        
-        # Backward and optimize
-        loss.backward()
-        optimizer.step()
-        
-        running_loss += loss.item()
-        
-        # Update progress bar
-        pbar.set_postfix({"loss": loss.item()})
-        
-        # Log to TensorBoard
+
+        # --- Discriminator Update ---
+        optimizer_d.zero_grad()
+        outputs = model(masked_images).detach()  # Detach to avoid backprop through G
+        real_logits = discriminator(images)
+        fake_logits = discriminator(outputs)
+        real_labels = torch.ones_like(real_logits)
+        fake_labels = torch.zeros_like(fake_logits)
+        loss_d = (criterion_adv(real_logits, real_labels) + 
+                  criterion_adv(fake_logits, fake_labels))
+        loss_d.backward()
+        optimizer_d.step()
+
+        # --- Generator Update ---
+        optimizer_g.zero_grad()
+        outputs = model(masked_images)
+        fake_logits = discriminator(outputs)
+        loss_adv = criterion_adv(fake_logits, torch.ones_like(fake_logits))
+        # Reconstruction loss on masked region only (using MSE per paper)
+        diff = (outputs - images) ** 2
+        loss_rec = (diff * inverse_mask).sum() / (inverse_mask.sum() + 1e-8)
+        loss_g = lambda_rec * loss_rec + lambda_adv * loss_adv
+        loss_g.backward()
+        optimizer_g.step()
+
+        running_loss_g += loss_g.item()
+        running_loss_d += loss_d.item()
+
+        pbar.set_postfix({"G_loss": loss_g.item(), "D_loss": loss_d.item()})
         global_step = epoch * len(train_loader) + i
-        writer.add_scalar('training_loss', loss.item(), global_step)
+        writer.add_scalar('G_loss', loss_g.item(), global_step)
+        writer.add_scalar('D_loss', loss_d.item(), global_step)
+        # # Resize to 227x227 to match model input size
+        # images = nn.functional.interpolate(images, size=(227, 227))
+        # images = images.cuda()
+        
+        # # Create masks and apply to images
+        # mask = create_mask(images.size(0), images.size(2), images.size(3), 
+        #                    args.mask_type, args.mask_size)
+        # masked_images = apply_mask(images, mask)
+        
+        # # Forward pass
+        # optimizer.zero_grad()
+        # outputs = model(masked_images)
+        
+        # # Compute loss
+        # inverse_mask = 1 - mask
+        # loss = criterion(outputs * inverse_mask, images * inverse_mask)
+        # # Optionally, compute loss on unmasked region as well
+        # diff = torch.abs(outputs - images)  # Element-wise absolute difference
+        # # Masked loss (normalized by number of masked pixels)
+        # loss_masked = (diff * inverse_mask).sum() / (inverse_mask.sum() + 1e-8)
+        # # Unmasked loss (normalized by number of unmasked pixels)
+        # loss_unmasked = (diff * mask).sum() / (mask.sum() + 1e-8)
+        # # Total loss with weighting
+        # loss = loss_masked + args.lambda_unmasked * loss_unmasked
+        
+        # # Backward and optimize
+        # loss.backward()
+        # optimizer.step()
+        
+        # running_loss += loss.item()
+        
+        # # Update progress bar
+        # pbar.set_postfix({"loss": loss.item()})
+        
+        # # Log to TensorBoard
+        # global_step = epoch * len(train_loader) + i
+        # writer.add_scalar('training_loss', loss.item(), global_step)
         
         # Log images occasionally
         if i % 200 == 0:
@@ -142,9 +182,10 @@ def train_epoch(model, train_loader, criterion, optimizer, epoch, args, writer):
             writer.add_images('masked_images', img_grid_masked, global_step)
             writer.add_images('reconstructed_images', img_grid_recon, global_step)
     
-    epoch_loss = running_loss / len(train_loader)
-    print(f"Epoch {epoch} training loss: {epoch_loss:.4f}")
-    return epoch_loss
+    epoch_loss_g = running_loss_g / len(train_loader)
+    epoch_loss_d = running_loss_d / len(train_loader)
+    print(f"Epoch {epoch} - G loss: {epoch_loss_g:.4f}, D loss: {epoch_loss_d:.4f}")
+    return epoch_loss_g
 
 def validate(model, val_loader, criterion, epoch, args, writer):
     model.eval()
@@ -168,7 +209,9 @@ def validate(model, val_loader, criterion, epoch, args, writer):
             inverse_mask = 1 - mask
             # loss = criterion(outputs * inverse_mask, images * inverse_mask)
             # Optionally, compute loss on unmasked region as well
-            diff = torch.abs(outputs - images)
+            # diff = torch.abs(outputs - images)
+            diff = (outputs - images) ** 2 #L2 norm
+
             loss_masked = (diff * inverse_mask).sum() / (inverse_mask.sum() + 1e-8)
             loss_unmasked = (diff * mask).sum() / (mask.sum() + 1e-8)
             loss = loss_masked + args.lambda_unmasked * loss_unmasked
@@ -252,59 +295,28 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False,
                             num_workers=args.workers, pin_memory=True)
     
-    # Data transforms
-    # normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-    #                                  std=[0.229, 0.224, 0.225])
-    
-    # train_transform = transforms.Compose([
-    #     transforms.RandomResizedCrop(224),
-    #     transforms.RandomHorizontalFlip(),
-    #     transforms.ToTensor(),
-    #     normalize,
-    # ])
-    
-    # val_transform = transforms.Compose([
-    #     transforms.Resize(256),
-    #     transforms.CenterCrop(224),
-    #     transforms.ToTensor(),
-    #     normalize,
-    # ])
-    
-    # # Create datasets
-    # train_dataset = datasets.ImageFolder(
-    #     os.path.join(args.data_dir, 'train'),
-    #     transform=train_transform
-    # )
-    
-    # val_dataset = datasets.ImageFolder(
-    #     os.path.join(args.data_dir, 'val'),
-    #     transform=val_transform
-    # )
-    
-    # # Create data loaders
-    # train_loader = DataLoader(
-    #     train_dataset, batch_size=args.batch_size, shuffle=True,
-    #     num_workers=args.workers, pin_memory=True
-    # )
-    
-    # val_loader = DataLoader(
-    #     val_dataset, batch_size=args.batch_size, shuffle=False,
-    #     num_workers=args.workers, pin_memory=True
-    # )
-    
     # Create model
-    model = ContextEncoder(use_channel_fc=args.use_channel_fc)
-    model.cuda()
-    
-    # Define loss function and optimizer
-    lambda_rec = 0.999 #default from paper
-    lambda_adv = 0.001 #default from paper
-    #criterion = lambda_rec * nn.L1Loss() + lambda_adv * nn.BCEWithLogitsLoss() # L1 loss tends to work better for image reconstruction
-    criterion = nn.L1Loss
-    optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(0.5, 0.999))
+    model = ContextEncoder(use_channel_fc=args.use_channel_fc).cuda()
+    discriminator = Discriminator().cuda()
+
+    # Define loss functions
+    criterion_rec = nn.MSELoss()  # Paper uses L2 loss
+    criterion_adv = nn.BCEWithLogitsLoss()
+    lambda_rec = 0.999  # From paper
+    lambda_adv = 0.001  # From paper
+
+    # Optimizers (paper uses Adam with lr=0.0002, beta1=0.5)
+    optimizer_g = optim.Adam(model.parameters(), lr=args.lr, betas=(0.5, 0.999))
+    optimizer_d = optim.Adam(discriminator.parameters(), lr=args.lr, betas=(0.5, 0.999))
+    # # Define loss function and optimizer
+    # lambda_rec = 0.999 #default from paper
+    # lambda_adv = 0.001 #default from paper
+    # #criterion = lambda_rec * nn.L1Loss() + lambda_adv * nn.BCEWithLogitsLoss() # L1 loss tends to work better for image reconstruction
+    # criterion = nn.MSELoss() # L2 loss tends to work better for image reconstruction
+    # optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(0.5, 0.999))
     
     # Learning rate scheduler
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.5)
+    scheduler = optim.lr_scheduler.StepLR(optimizer_g, step_size=30, gamma=0.5)
     
     # Tensorboard writer
     writer = SummaryWriter(log_dir=args.log_dir)
@@ -320,7 +332,7 @@ def main():
             start_epoch = checkpoint['epoch']
             best_loss = checkpoint['best_loss']
             model.load_state_dict(checkpoint['state_dict'])
-            optimizer.load_state_dict(checkpoint['optimizer'])
+            optimizer_g.load_state_dict(checkpoint['optimizer'])
             print(f"Loaded checkpoint '{args.resume}' (epoch {checkpoint['epoch']})")
         else:
             print(f"No checkpoint found at '{args.resume}'")
@@ -328,10 +340,13 @@ def main():
     # Training loop
     for epoch in range(start_epoch, args.epochs):
         # Train for one epoch
-        train_loss = train_epoch(model, train_loader, criterion, optimizer, epoch, args, writer)
+        train_loss_g, train_loss_d = train_epoch(
+            model, discriminator, train_loader, criterion_adv,
+            lambda_rec, lambda_adv, optimizer_g, optimizer_d, epoch, args, writer
+        )
         
         # Evaluate on validation set
-        val_loss = validate(model, val_loader, criterion, epoch, args, writer)
+        val_loss = validate(model, val_loader, criterion_adv, epoch, args, writer)
         
         # Step learning rate scheduler
         scheduler.step()
@@ -344,7 +359,7 @@ def main():
             'epoch': epoch + 1,
             'state_dict': model.state_dict(),
             'best_loss': best_loss,
-            'optimizer': optimizer.state_dict(),
+            'optimizer': optimizer_g.state_dict(),
         }
         
         # Save latest checkpoint

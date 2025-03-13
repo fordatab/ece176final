@@ -104,6 +104,27 @@ class Decoder(nn.Module):
         x = F.interpolate(x, size=(227, 227), mode='bilinear', align_corners=False)
         return x
 
+class Discriminator(nn.Module):
+    def __init__(self):
+        super(Discriminator, self).__init__()
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1)  # 227 -> 113
+        self.conv2 = nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1)  # 113 -> 56
+        self.conv3 = nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1)  # 56 -> 28
+        self.conv4 = nn.Conv2d(256, 512, kernel_size=4, stride=2, padding=1)  # 28 -> 14
+        self.conv5 = nn.Conv2d(512, 1024, kernel_size=4, stride=2, padding=1)  # 14 -> 7
+        self.fc = nn.Linear(1024 * 7 * 7, 1)  # Flatten and output a logit
+
+    def forward(self, x):
+        x = F.leaky_relu(self.conv1(x), 0.2)
+        x = F.leaky_relu(self.conv2(x), 0.2)
+        x = F.leaky_relu(self.conv3(x), 0.2)
+        x = F.leaky_relu(self.conv4(x), 0.2)
+        x = F.leaky_relu(self.conv5(x), 0.2)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        return x
+    
+    
 #########################################
 # Context Encoder: Combines Encoder, Channel-wise FC, and Decoder
 #########################################
@@ -134,81 +155,3 @@ if __name__ == "__main__":
     input_tensor = torch.randn(4, 3, 227, 227)
     output = model(input_tensor)
     print("Output shape:", output.shape)
-
-
-##################
-##################
-##################
-
-class Encoder2(nn.Module):
-    def __init__(self):
-        super(Encoder2, self).__init__()
-        
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1)
-        self.relu1 = nn.ReLU(inplace=True)
-
-        self.conv2 = nn.Conv2d(64, 64,kernel_size=4, stride=2, padding=1)
-        self.relu2 = nn.ReLU(inplace=True)
-
-        self.conv3 = nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1)
-        self.relu3 = nn.ReLU(inplace=True)
-
-        self.conv4 = nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1)
-        self.relu4 = nn.ReLU(inplace=True)
-
-        self.conv5 = nn.Conv2d(256, 512, kernel_size=4, stride=2, padding=1)
-        self.relu5 = nn.ReLU(inplace=True)
-    
-    def forward(self, x):
-        x = self.relu1(self.conv1(x))
-        x = self.relu2(self.conv2(x))
-        x = self.relu3(self.conv3(x))
-        x = self.relu4(self.conv4(x))
-        x = self.relu5(self.conv5(x))
-
-        return x
-    
-class FullyConnected(nn.Module):
-    def __init__(self, batch_size=128):
-        super(FullyConnected, self).__init__()
-        self.batch_size = batch_size
-
-        self.flatten = nn.Flatten()
-        self.fc = nn.Linear(512*6*6, 512)
-        self.dropout = nn.Dropout(0.5)
-
-    def foward(self, x):
-        x = self.flatten(x)
-        x = self.dropout(self.fc(x))
-        output = torch.reshape(x, (self.batch_size, 512, 1, 1))
-        print(output.shape)
-        
-        return output
-    
-class Decoder2(nn.Module):
-    def __init__(self):
-        super(Decoder2, self).__init__()
-
-        self.upconv1 = nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1)
-        self.relu1 = nn.ReLU(inplace=True)
-
-        self.upconv2 = nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1)
-        self.relu2 = nn.ReLU(inplace=True)
-
-        self.upconv3 = nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1)
-        self.relu3 = nn.ReLU(inplace=True)
-
-        self.upconv4 = nn.ConvTranspose2d(64, 3, kernel_size=4, stride=2, padding=1)
-        self.relu4 = nn.ReLU(inplace=True)
-
-    def forward(self, x):
-        x = self.relu1(self.upconv1(x))
-        x = self.relu2(self.upconv2(x))
-        x = self.relu3(self.upconv3(x))
-        x = self.relu4(self.upconv4(x))
-
-        return x
-
-        
-
-        
