@@ -160,7 +160,6 @@ if __name__ == "__main__":
 ##################
 ##################
 ##################
-
 class Encoder2(nn.Module):
     def __init__(self):
         super(Encoder2, self).__init__()
@@ -195,13 +194,13 @@ class FullyConnected(nn.Module):
         self.batch_size = batch_size
 
         self.flatten = nn.Flatten()
-        self.fc = nn.Linear(512*4*4, 512)
+        self.fc = nn.Linear(512*4*4, 512*4*4)
         self.dropout = nn.Dropout(0.5)
 
     def forward(self, x):
         x = self.flatten(x)
         x = self.dropout(self.fc(x))
-        output = torch.reshape(x, (self.batch_size, 512, 1, 1))
+        output = x = x.view(-1, 512, 4, 4)
         print(output.shape)
         
         return output
@@ -253,19 +252,17 @@ class ContextEncoder2(nn.Module):
 class Discriminator2(nn.Module):
     def __init__(self):
         super(Discriminator2, self).__init__()
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1)  # 227 -> 113
-        self.conv2 = nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1)  # 113 -> 56
-        self.conv3 = nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1)  # 56 -> 28
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1)
+        self.conv2 = nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1)  
+        self.conv3 = nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1)  
         self.conv4 = nn.Conv2d(256, 512, kernel_size=4, stride=2, padding=1)  
-        self.conv5 = nn.Conv2d(512, 512, kernel_size=4, stride=2, padding=1)  
-        self.fc = nn.Linear(8192, 1)  # Flatten and output a logit
+        self.fc = nn.Linear(8192, 1)  
 
     def forward(self, x):
         x = F.leaky_relu(self.conv1(x), 0.2)
         x = F.leaky_relu(self.conv2(x), 0.2)
         x = F.leaky_relu(self.conv3(x), 0.2)
         x = F.leaky_relu(self.conv4(x), 0.2)
-        x = F.leaky_relu(self.conv5(x), 0.2)
         x = x.view(x.size(0), -1)
         x = self.fc(x)
         return x
