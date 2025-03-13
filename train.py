@@ -15,8 +15,9 @@ from torchvision.datasets import CIFAR10
 
 
 
-# Import the model definition
-from context_encoder import ContextEncoder, Discriminator
+# Import the model definition, switch between models easily by commenting out.
+# from context_encoder import ContextEncoder, Discriminator
+from discrim_model import ContextEncoder, Discriminator
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train Context Encoder on ImageNet')
