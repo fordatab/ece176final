@@ -200,7 +200,6 @@ class FullyConnected(nn.Module):
         x = self.flatten(x)
         x = self.dropout(self.fc(x))
         output = x = x.view(-1, 512, 4, 4)
-        print(output.shape)
         
         return output
     
