@@ -15,8 +15,9 @@ from torchvision.datasets import CIFAR10
 
 
 
-# Import the model definition
-from context_encoder import ContextEncoder, Discriminator
+# Import the model definition, switch between models easily by commenting out.
+# from context_encoder import ContextEncoder, Discriminator
+from discrim_model import ContextEncoder, Discriminator
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train Context Encoder on ImageNet')
@@ -134,43 +135,6 @@ def train_epoch(model, discriminator, train_loader, criterion_adv, lambda_rec, l
         global_step = epoch * len(train_loader) + i
         writer.add_scalar('G_loss', loss_g.item(), global_step)
         writer.add_scalar('D_loss', loss_d.item(), global_step)
-        # # Resize to 227x227 to match model input size
-        # images = nn.functional.interpolate(images, size=(227, 227))
-        # images = images.cuda()
-        
-        # # Create masks and apply to images
-        # mask = create_mask(images.size(0), images.size(2), images.size(3), 
-        #                    args.mask_type, args.mask_size)
-        # masked_images = apply_mask(images, mask)
-        
-        # # Forward pass
-        # optimizer.zero_grad()
-        # outputs = model(masked_images)
-        
-        # # Compute loss
-        # inverse_mask = 1 - mask
-        # loss = criterion(outputs * inverse_mask, images * inverse_mask)
-        # # Optionally, compute loss on unmasked region as well
-        # diff = torch.abs(outputs - images)  # Element-wise absolute difference
-        # # Masked loss (normalized by number of masked pixels)
-        # loss_masked = (diff * inverse_mask).sum() / (inverse_mask.sum() + 1e-8)
-        # # Unmasked loss (normalized by number of unmasked pixels)
-        # loss_unmasked = (diff * mask).sum() / (mask.sum() + 1e-8)
-        # # Total loss with weighting
-        # loss = loss_masked + args.lambda_unmasked * loss_unmasked
-        
-        # # Backward and optimize
-        # loss.backward()
-        # optimizer.step()
-        
-        # running_loss += loss.item()
-        
-        # # Update progress bar
-        # pbar.set_postfix({"loss": loss.item()})
-        
-        # # Log to TensorBoard
-        # global_step = epoch * len(train_loader) + i
-        # writer.add_scalar('training_loss', loss.item(), global_step)
         
         # Log images occasionally
         if i % 200 == 0:
@@ -308,12 +272,6 @@ def main():
     # Optimizers (paper uses Adam with lr=0.0002, beta1=0.5)
     optimizer_g = optim.Adam(model.parameters(), lr=args.lr, betas=(0.5, 0.999))
     optimizer_d = optim.Adam(discriminator.parameters(), lr=args.lr, betas=(0.5, 0.999))
-    # # Define loss function and optimizer
-    # lambda_rec = 0.999 #default from paper
-    # lambda_adv = 0.001 #default from paper
-    # #criterion = lambda_rec * nn.L1Loss() + lambda_adv * nn.BCEWithLogitsLoss() # L1 loss tends to work better for image reconstruction
-    # criterion = nn.MSELoss() # L2 loss tends to work better for image reconstruction
-    # optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(0.5, 0.999))
     
     # Learning rate scheduler
     scheduler = optim.lr_scheduler.StepLR(optimizer_g, step_size=30, gamma=0.5)
