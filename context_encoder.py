@@ -165,40 +165,40 @@ class Encoder2(nn.Module):
     def __init__(self):
         super(Encoder2, self).__init__()
         
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1)
+        self.conv1 = nn.Conv2d(3, 64 , kernel_size=4, stride=2, padding=1) 
         self.relu1 = nn.ReLU(inplace=True)
 
-        self.conv2 = nn.Conv2d(64, 64,kernel_size=4, stride=2, padding=1)
+        self.conv2 = nn.Conv2d(64, 64, kernel_size=4, stride=2, padding=1)  
         self.relu2 = nn.ReLU(inplace=True)
 
-        self.conv3 = nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1)
+        self.conv3 = nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1) 
         self.relu3 = nn.ReLU(inplace=True)
 
-        self.conv4 = nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1)
+        self.conv4 = nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1) 
         self.relu4 = nn.ReLU(inplace=True)
 
-        self.conv5 = nn.Conv2d(256, 512, kernel_size=4, stride=2, padding=1)
+        self.conv5 = nn.Conv2d(256, 512, kernel_size=4, stride=2, padding=1) 
         self.relu5 = nn.ReLU(inplace=True)
     
     def forward(self, x):
-        x = self.relu1(self.conv1(x))
-        x = self.relu2(self.conv2(x))
-        x = self.relu3(self.conv3(x))
-        x = self.relu4(self.conv4(x))
-        x = self.relu5(self.conv5(x))
+        x = self.relu1(self.conv1(x)) 
+        x = self.relu2(self.conv2(x)) 
+        x = self.relu3(self.conv3(x))  
+        x = self.relu4(self.conv4(x))  
+        x = self.relu5(self.conv5(x)) 
 
         return x
-    
+
 class FullyConnected(nn.Module):
     def __init__(self, batch_size=128):
         super(FullyConnected, self).__init__()
         self.batch_size = batch_size
 
         self.flatten = nn.Flatten()
-        self.fc = nn.Linear(512*6*6, 512)
+        self.fc = nn.Linear(512*4*4, 512)
         self.dropout = nn.Dropout(0.5)
 
-    def foward(self, x):
+    def forward(self, x):
         x = self.flatten(x)
         x = self.dropout(self.fc(x))
         output = torch.reshape(x, (self.batch_size, 512, 1, 1))
@@ -249,6 +249,27 @@ class ContextEncoder2(nn.Module):
         decoded = self.decode(connection)
 
         return decoded
+
+class Discriminator2(nn.Module):
+    def __init__(self):
+        super(Discriminator2, self).__init__()
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1)  # 227 -> 113
+        self.conv2 = nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1)  # 113 -> 56
+        self.conv3 = nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1)  # 56 -> 28
+        self.conv4 = nn.Conv2d(256, 512, kernel_size=4, stride=2, padding=1)  
+        self.conv5 = nn.Conv2d(512, 512, kernel_size=4, stride=2, padding=1)  
+        self.fc = nn.Linear(8192, 1)  # Flatten and output a logit
+
+    def forward(self, x):
+        x = F.leaky_relu(self.conv1(x), 0.2)
+        x = F.leaky_relu(self.conv2(x), 0.2)
+        x = F.leaky_relu(self.conv3(x), 0.2)
+        x = F.leaky_relu(self.conv4(x), 0.2)
+        x = F.leaky_relu(self.conv5(x), 0.2)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        return x
+
 
 
 
