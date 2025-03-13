@@ -111,7 +111,7 @@ def train_epoch(model, discriminator, train_loader, criterion_adv, lambda_rec, l
         real_labels = torch.ones_like(real_logits)
         fake_labels = torch.zeros_like(fake_logits)
         loss_d = (criterion_adv(real_logits, real_labels) + 
-                  criterion_adv(fake_logits, fake_labels))
+                  criterion_adv(fake_logits, fake_labels)) * 0.5
         loss_d.backward()
         optimizer_d.step()
 
@@ -340,7 +340,7 @@ def main():
     # Training loop
     for epoch in range(start_epoch, args.epochs):
         # Train for one epoch
-        train_loss_g, train_loss_d = train_epoch(
+        train_loss_g = train_epoch(
             model, discriminator, train_loader, criterion_adv,
             lambda_rec, lambda_adv, optimizer_g, optimizer_d, epoch, args, writer
         )
