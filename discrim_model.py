@@ -3,9 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class ContextEncoder_D(nn.Module):
+class ContextEncoder(nn.Module):
     def __init__(self, latent_dim=100):
-        super(ContextEncoder_D, self).__init__()
+        super(ContextEncoder, self).__init__()
         # Encoder
         self.encoder = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1, bias=False),
@@ -54,9 +54,9 @@ class ContextEncoder_D(nn.Module):
         reconstructed = self.decoder(latent)
         return reconstructed
 
-class Discriminator_D(nn.Module):
+class Discriminator(nn.Module):
     def __init__(self):
-        super(Discriminator_D, self).__init__()
+        super(Discriminator, self).__init__()
         self.model = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
