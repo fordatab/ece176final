@@ -2,20 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-#########################################
-# Example usage
-#########################################
-if __name__ == "__main__":
-    # Create a model instance
-    model = ContextEncoder()
-    # Dummy input: batch of 4 images of size 227x227 with 3 channels
-    input_tensor = torch.randn(4, 3, 227, 227)
-    output = model(input_tensor)
-    print("Output shape:", output.shape)
-
-##################
-##################
-##################
 class Encoder2(nn.Module):
     def __init__(self):
         super(Encoder2, self).__init__()
@@ -140,7 +126,15 @@ class Discriminator2(nn.Module):
         x = self.fc(x)
         return x
 
-
+#########################################
+# Example usage
+#########################################
+if __name__ == "__main__":
+    # Create a model instance
+    model = ContextEncoder2()
+    input_tensor = torch.randn(128, 3, 128, 128)
+    output = model(input_tensor)
+    print("Output shape:", output.shape)
 
 
 
