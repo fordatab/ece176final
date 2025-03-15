@@ -7,26 +7,31 @@ class Encoder2(nn.Module):
         super(Encoder2, self).__init__()
         
         self.conv1 = nn.Conv2d(3, 64 , kernel_size=4, stride=2, padding=1) 
+        self.bn1 = nn.BatchNorm2d(64)
         self.relu1 = nn.ReLU(inplace=True)
 
         self.conv2 = nn.Conv2d(64, 64, kernel_size=4, stride=2, padding=1)  
+        self.bn2 = nn.BatchNorm2d(64)
         self.relu2 = nn.ReLU(inplace=True)
 
         self.conv3 = nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1) 
+        self.bn3 = nn.BatchNorm2d(128)
         self.relu3 = nn.ReLU(inplace=True)
 
         self.conv4 = nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1) 
+        self.bn4 = nn.BatchNorm2d(256)
         self.relu4 = nn.ReLU(inplace=True)
 
         self.conv5 = nn.Conv2d(256, 512, kernel_size=4, stride=2, padding=1) 
+        self.bn5 = nn.BatchNorm2d(512)
         self.relu5 = nn.ReLU(inplace=True)
     
     def forward(self, x):
-        x = self.relu1(self.conv1(x)) 
-        x = self.relu2(self.conv2(x)) 
-        x = self.relu3(self.conv3(x))  
-        x = self.relu4(self.conv4(x))  
-        x = self.relu5(self.conv5(x)) 
+        x = self.relu1(self.bn1(self.conv1(x)))
+        x = self.relu2(self.bn2(self.conv2(x)))
+        x = self.relu3(self.bn3(self.conv3(x))) 
+        x = self.relu4(self.bn4(self.conv4(x)))
+        x = self.relu5(self.bn5(self.conv5(x))) 
 
         return x
 
@@ -51,27 +56,32 @@ class Decoder2(nn.Module):
         super(Decoder2, self).__init__()
 
         self.upconv1 = nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1)
+        self.bn1 = nn.BatchNorm2d(256)
         self.relu1 = nn.ReLU(inplace=True)
 
         self.upconv2 = nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1)
+        self.bn2 = nn.BatchNorm2d(128)
         self.relu2 = nn.ReLU(inplace=True)
 
         self.upconv3 = nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1)
+        self.bn3 = nn.BatchNorm2d(64)
         self.relu3 = nn.ReLU(inplace=True)
 
         self.upconv4 = nn.ConvTranspose2d(64, 64, kernel_size=4, stride=2, padding=1)
+        self.bn4 = nn.BatchNorm2d(64)
         self.relu4 = nn.ReLU(inplace=True)
 
         self.upconv5 = nn.ConvTranspose2d(64, 3, kernel_size=4, stride=2, padding=1)
+        self.bn5 = nn.BatchNorm2d(3)
         self.relu5 = nn.ReLU(inplace=True)
 
 
     def forward(self, x):
-        x = self.relu1(self.upconv1(x))
-        x = self.relu2(self.upconv2(x))
-        x = self.relu3(self.upconv3(x))
-        x = self.relu4(self.upconv4(x))
-        x = self.relu5(self.upconv5(x))
+        x = self.relu1(self.bn1(self.upconv1(x)))
+        x = self.relu2(self.bn2(self.upconv2(x)))
+        x = self.relu3(self.bn3(self.upconv3(x)))
+        x = self.relu4(self.bn4(self.upconv4(x)))
+        x = self.relu5(self.bn5(self.upconv5(x)))
 
         return x
     
@@ -99,28 +109,33 @@ class Discriminator2(nn.Module):
     def __init__(self):
         super(Discriminator2, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1)
+        self.bn1 = nn.BatchNorm2d(64)
         self.relu1 = nn.LeakyReLU(0.2, inplace=True)
 
         self.conv2 = nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1)
+        self.bn2 = nn.BatchNorm2d(128)
         self.relu2 = nn.LeakyReLU(0.2, inplace=True)
 
         self.conv3 = nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1)
+        self.bn3 = nn.BatchNorm2d(256)
         self.relu3 = nn.LeakyReLU(0.2, inplace=True)
 
         self.conv4 = nn.Conv2d(256, 512, kernel_size=4, stride=2, padding=1)
+        self.bn4 = nn.BatchNorm2d(512)
         self.relu4 = nn.LeakyReLU(0.2, inplace=True)
 
         self.conv5 = nn.Conv2d(512, 512, kernel_size=4, stride=2, padding=1)
+        self.bn5 = nn.BatchNorm2d(512)
         self.relu5 = nn.LeakyReLU(0.2, inplace=True)
 
         self.fc = nn.Linear(512 * 4 * 4, 1)
 
     def forward(self, x):
-        x = self.relu1(self.conv1(x))
-        x = self.relu2(self.conv2(x))
-        x = self.relu3(self.conv3(x))
-        x = self.relu4(self.conv4(x))
-        x = self.relu5(self.conv5(x))
+        x = self.relu1(self.bn1(self.conv1(x)))
+        x = self.relu2(self.bn2(self.conv2(x)))
+        x = self.relu3(self.bn3(self.conv3(x))) 
+        x = self.relu4(self.bn4(self.conv4(x)))
+        x = self.relu5(self.bn5(self.conv5(x))) 
 
         x = x.view(x.size(0), -1)
         x = self.fc(x)
