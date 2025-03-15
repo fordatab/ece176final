@@ -99,7 +99,8 @@ def train_epoch(model, discriminator, train_loader, criterion_adv, lambda_rec, l
                 desc=f"Epoch {epoch}/{args.epochs}")
     
     for i, (images, _) in pbar:
-        images = nn.functional.interpolate(images, size=(227, 227)).cuda()
+        # images = nn.functional.interpolate(images, size=(227, 227)).cuda()
+        images.cuda()
         mask = create_mask(images.size(0), 227, 227, args.mask_type, args.mask_size)
         masked_images = apply_mask(images, mask)
         inverse_mask = 1 - mask
@@ -158,7 +159,7 @@ def validate(model, val_loader, criterion, epoch, args, writer):
     with torch.no_grad():
         for i, (images, _) in enumerate(val_loader):
             # Resize to 227x227
-            images = nn.functional.interpolate(images, size=(227, 227))
+            # images = nn.functional.interpolate(images, size=(227, 227))
             images = images.cuda()
             
             # Create masks and apply to images
@@ -192,7 +193,7 @@ def validate(model, val_loader, criterion, epoch, args, writer):
     if len(val_loader) > 0:
         with torch.no_grad():
             images, _ = next(iter(val_loader))
-            images = nn.functional.interpolate(images, size=(227, 227))
+            # images = nn.functional.interpolate(images, size=(227, 227))
             images = images[:4].cuda()  # Take first 4 images
             
             mask = create_mask(images.size(0), images.size(2), images.size(3), 
@@ -221,19 +222,7 @@ def main():
     #CIFAR-10 Test
     normalize = transforms.Normalize(mean=[0.4914, 0.4822, 0.4465],
                                  std=[0.2023, 0.1994, 0.2010])
-    
-    # train_transform = transforms.Compose([
-    #     transforms.Resize((227, 227)),  # Resize CIFAR-10 images to 227x227
-    #     transforms.RandomHorizontalFlip(),
-    #     transforms.ToTensor(),          # Scales to [0, 1]
-    #     scale_to_minus_one_one
-    # ])
 
-    # val_transform = transforms.Compose([
-    #     transforms.Resize((227, 227)),
-    #     transforms.ToTensor(),          # Scales to [0, 1]
-    #     scale_to_minus_one_one
-    # ])
 
     train_transform = transforms.Compose([
         transforms.Resize((227, 227)),  # Resize CIFAR10 images to 227x227
@@ -249,8 +238,11 @@ def main():
     ])
 
     # Use CIFAR10 instead of ImageFolder
-    train_dataset = CIFAR10(root='./data', train=True, download=True, transform=train_transform)
-    val_dataset = CIFAR10(root='./data', train=False, download=True, transform=val_transform)
+    # train_dataset = CIFAR10(root='./data', train=True, download=True, transform=train_transform)
+    # val_dataset = CIFAR10(root='./data', train=False, download=True, transform=val_transform)
+    # CelebA datasets
+    train_dataset = datasets.CelebA(root=args.data_dir, split='train', transform=train_transform, download=True)
+    val_dataset = datasets.CelebA(root=args.data_dir, split='valid', transform=val_transform, download=True)
 
     # Create data loaders as before
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
