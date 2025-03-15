@@ -324,7 +324,6 @@ def main():
             torch.save(save_dict, os.path.join(args.save_dir, f'checkpoint_ep{epoch+1}.pth'))
     
     writer.close()
-    print("Training completed!")
 
 if __name__ == "__main__":
     main()
