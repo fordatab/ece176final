@@ -128,6 +128,7 @@ class Discriminator2(nn.Module):
         self.bn5 = nn.BatchNorm2d(512)
         self.relu5 = nn.LeakyReLU(0.2, inplace=True)
 
+        self.flatten = nn.Flatten()
         self.fc = nn.Linear(512 * 4 * 4, 1)
 
     def forward(self, x):
@@ -137,7 +138,7 @@ class Discriminator2(nn.Module):
         x = self.relu4(self.bn4(self.conv4(x)))
         x = self.relu5(self.bn5(self.conv5(x))) 
 
-        x = x.view(x.size(0), -1)
+        x = self.flatten(x)
         x = self.fc(x)
         return x
 
