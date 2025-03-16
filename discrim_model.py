@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 
 class ContextEncoder(nn.Module):
-    def __init__(self, latent_dim=100):
+    def __init__(self, use_channel_fc, latent_dim=100):
         super(ContextEncoder, self).__init__()
         # Encoder
         self.encoder = nn.Sequential(
